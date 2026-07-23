@@ -1,7 +1,7 @@
 /*
  *    Mars Rover - Arduino Code
  *    by Dejan, www.HowToMechatronics.com
- *    modified by Jack
+ *    modified by Jack to add arm/claw support
  * 
  *   Libraries:
  *   ServoEasing: https://github.com/ArminJo/ServoEasing
@@ -12,16 +12,15 @@
  * Channel 2 which is 3 on the controller = Steering
  * channel 3 which is 4 on the controller = Speed
  * Channel 4 which is 5 on the controller = Direction
- * Channel 5 which is 6 on the controller = Not used
- * Channel 6 which is 7 on the controller = Claw left/right
- * Channel 7 which is 8 on the controller = Claw Forward/Backward
- * Channel 8 which is 9 on the controller = Claw Up/Down
- * Channel 9 which is 10 on the controller = Not used
+ * Channel 5 which is 6 on the controller = Claw actuate
+ * Channel 6 which is 7 on the controller = Arm left/right
+ * Channel 7 which is 8 on the controller = Arm Forward/Backward
+ * Channel 8 which is 9 on the controller = Arm Up/Down            3 stage switch
+ * Channel 9 which is 10 on the controller = Not used               Usage idea: Sirens so people know to get out of the rovers way
  */
 
 #include <Arduino.h>
 #include <AccelStepper.h>
-// #include <Adafruit_NeoPixel.h> //if we want to add neopixels to the rovers
 #include <ServoEasing.hpp>
 #include <IBusBM.h>
 // #include <LiquidCrystal_I2C.h> //if we want to add a Liquid Crystal I2C display to the rover
