@@ -10,26 +10,22 @@ os.system('cls' if os.name == 'nt' else 'clear')
 pygame.mixer.init()
 pygame.init()
 
-# serial0 = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, timeout=1)
+serial0 = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, timeout=1)
 
 time.sleep(2)
 
 def exit():
-    # serial0.close()
     print("Closing...")
+    serial0.close()
 
 atexit.register(exit)
 
-# def println(printIn):
-#     toPrint = f"{printIn}\n"
-#     serial0.write(toPrint.encode("utf-8"))
-
-# def print(print):
-#     serial0.write(print.encode("utf-8"))
-
 def play():
-    pygame.mixer.music.load("./music/Moon Lord.mp3")
-    pygame.mixer.music.play(0)
+    if pygame.mixer.music.get_busy():
+        print("playing")
+    else:
+        pygame.mixer.music.load("./music/Moon Lord.mp3")
+        pygame.mixer.music.play(0)
 
 def say(text):
     engine = pyttsx3.init()
@@ -38,19 +34,40 @@ def say(text):
     engine.say(text)
     engine.runAndWait()
 
-# serial0.readline()
+def read_serial():
+    if serial0.in_waiting > 0:
+        global last_received
+
+        buffer_string = ''
+        buffer_string = buffer_string + serial0.read(serial0.inWaiting())
+        if '\n' in buffer_string:
+            lines = buffer_string.split('\n') # Guaranteed to have at least 2 entries
+            last_received = lines[-2]
+            #If the Arduino sends lots of empty lines, you'll lose the
+            #last filled line, so you could make the above statement conditional
+            #like so: if lines[-2]: last_received = lines[-2]
+            buffer_string = lines[-1]
+
+    
+        if last_received == "Play Music"():
+            play()
+
+def println(printIn):
+    toPrint = f"{printIn}\n"
+    serial0.write(toPrint.encode("utf-8"))
+
+def print(print):
+    serial0.write(print.encode("utf-8"))
 
 try:
-    # while True:
-        # Main loop
-        # pass
-    play()
+    # Main loop
     while True:
+        read_serial()
         print("playing")
 
 except KeyboardInterrupt:
     print("Closing, please wait")
 
 finally:
-    # serial0.close()
+    serial0.close()
     print("E")
