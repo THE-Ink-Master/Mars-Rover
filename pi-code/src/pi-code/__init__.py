@@ -10,6 +10,7 @@ os.system('cls' if os.name == 'nt' else 'clear')
 pygame.mixer.init()
 pygame.init()
 
+# disable serial if you don't have the mega connected
 serial1 = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, timeout=1)
 
 time.sleep(2)
