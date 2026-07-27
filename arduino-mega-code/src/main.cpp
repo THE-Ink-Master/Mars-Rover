@@ -3,27 +3,29 @@
  *    by Dejan, www.HowToMechatronics.com
  *    modified by Jack to add arm/claw support
  * 
- *   Libraries:
+ *   Libraries (included):
  *   ServoEasing: https://github.com/ArminJo/ServoEasing
  *   IBusBM: https://github.com/bmellink/IBusBM
  *   AccelStepper:http://www.airspayce.com/mikem/arduino/AccelStepper/index.html
- * Channel 0 which is 1 on the controller = Camera rotate
- * Channel 1 which is 2 on the controller = Camera tilt
- * Channel 2 which is 3 on the controller = Steering
- * channel 3 which is 4 on the controller = Speed
- * Channel 4 which is 5 on the controller = Direction
- * Channel 5 which is 6 on the controller = Claw actuate
- * Channel 6 which is 7 on the controller = Arm left/right
- * Channel 7 which is 8 on the controller = Arm Forward/Backward
- * Channel 8 which is 9 on the controller = Arm Up/Down            3 stage switch
- * Channel 9 which is 10 on the controller = Not used               Usage idea: Sirens so people know to get out of the rovers way
+ * 
+ * 
+ * Channel 0 which is 1 on the controller = Camera rotate           Right Stick (left/Right)
+ * Channel 1 which is 2 on the controller = Camera tilt             Right Stick (Up/Down)
+ * Channel 2 which is 3 on the controller = Steering                Left Stick (left/Right)
+ * channel 3 which is 4 on the controller = Speed                   Left Stick (Up/Down)
+ * Channel 4 which is 5 on the controller = Direction               2 stage switch (Left)
+ * Channel 5 which is 6 on the controller = Claw actuate            2 stage switch (Mid Left)
+ * Channel 6 which is 7 on the controller = Arm left/right          Dial (Left)
+ * Channel 7 which is 8 on the controller = Arm Forward/Backward    Dial (Right)
+ * Channel 8 which is 9 on the controller = Arm Up/Down             3 stage switch (Mid Right)
+ * Channel 9 which is 10 on the controller = Not used               2 stage switch (Right)      Usage idea: alarm/music so people know to get out of the rovers way
  */
 
 #include <Arduino.h>
 #include <AccelStepper.h>
 #include <ServoEasing.hpp>
 #include <IBusBM.h>
-// #include <LiquidCrystal_I2C.h> //if we want to add a Liquid Crystal I2C display to the rover
+// #include <LiquidCrystal_I2C.h> //if we want to add a Liquid Crystal I2C display to the rover for stats
 #include <Servo.h>
 
 #define motorW1_IN1 6
@@ -80,7 +82,6 @@ int servoArmMidAngle = 90;
 int servoArmClawAngle = 90;
 int servoClawAngle = 90;
 
-
 float d1 = 271; // distance in mm
 float d2 = 278;
 float d3 = 301;
@@ -120,24 +121,41 @@ void calculateServoAngle() {
 
 void arm() {
   //code for the arm/claw extension goes here
+  //set to correct values here
   servoArmBaseAngle = map(ch6, 1000, 2000, 0, 180);
   armForwardBackward = map(ch7, 1000, 2000, 0, 180);
 
+  //set to corect angles and values
   if(ch5 > 1500) {
     servoClawAngle = 0;
   } else if(ch5 < 1500) {
     servoClawAngle = 180;
   }
 
-  if(ch8 > 1600) {
-    armUpDown = 180;
-  } else if(ch8 < 1400) {
-    armUpDown = 0;
-  } else if(ch8 == 1500) {
-    armUpDown = 90;
+  //set to correct values
+  armUpDown = map(ch8, 0, 2000, 0, 180);
+
+  //Sending to pi to play sounds
+  if(ch9 < 1500) {
+    Serial.println("ch9On");
+  } else if(ch9 > 1500) {
+    Serial.println("ch9Off");
   }
-  
-  servoArmBaseSide.startEaseTo(servoArmBaseAngle);
+
+  //debug
+  Serial.print("Base side Angle: ");
+  Serial.println(servoArmSideAngle);
+  Serial.print("Base Height Angle: ");
+  Serial.println(servoArmBaseAngle);
+  Serial.print("Mid Arm Angle: ");
+  Serial.println(servoArmMidAngle);
+  Serial.print("Claw Arm Angle: ");
+  Serial.println(servoArmClawAngle);
+  Serial.print("Claw angle: ");
+  Serial.println(servoClawAngle);
+
+  //setting servo angles
+  servoArmBaseSide.startEaseTo(servoArmSideAngle);
   servoArmBaseHeight.startEaseTo(servoArmBaseAngle);
   servoArmMidHeight.startEaseTo(servoArmMidAngle);
   servoArmClawHeight.startEaseTo(servoArmClawAngle);
@@ -146,9 +164,9 @@ void arm() {
 
 void serialSend() {
   if (Serial3.available() > 0) {
-    int copy = Serial3.read();
-    Serial.println("ESP-DATA:");
-    Serial.println(copy);
+    char copy = (char)Serial3.read();
+    Serial.print("ESP-");
+    Serial.print(copy);
   }
 }
 

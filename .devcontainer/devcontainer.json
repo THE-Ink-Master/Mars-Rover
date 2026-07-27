@@ -2,7 +2,8 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "platformio.platformio-ide"
+        "platformio.platformio-ide",
+        "ms-python.python"
       ]
     }
   }
