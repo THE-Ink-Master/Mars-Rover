@@ -10,13 +10,13 @@ os.system('cls' if os.name == 'nt' else 'clear')
 pygame.mixer.init()
 pygame.init()
 
-serial0 = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, timeout=1)
+serial1 = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, timeout=1)
 
 time.sleep(2)
 
 def exit():
     print("Closing...")
-    serial0.close()
+    serial1.close()
 
 atexit.register(exit)
 
@@ -35,11 +35,11 @@ def say(text):
     engine.runAndWait()
 
 def read_serial():
-    if serial0.in_waiting > 0:
+    if serial1.in_waiting > 0:
         global last_received
 
         buffer_string = ''
-        buffer_string = buffer_string + serial0.read(serial0.inWaiting())
+        buffer_string = buffer_string + serial1.read(serial1.inWaiting())
         if '\n' in buffer_string:
             lines = buffer_string.split('\n') # Guaranteed to have at least 2 entries
             last_received = lines[-2]
@@ -54,10 +54,10 @@ def read_serial():
 
 def println(printIn):
     toPrint = f"{printIn}\n"
-    serial0.write(toPrint.encode("utf-8"))
+    serial1.write(toPrint.encode("utf-8"))
 
 def print(print):
-    serial0.write(print.encode("utf-8"))
+    serial1.write(print.encode("utf-8"))
 
 try:
     # Main loop
@@ -69,5 +69,5 @@ except KeyboardInterrupt:
     print("Closing, please wait")
 
 finally:
-    serial0.close()
+    serial1.close()
     print("E")
