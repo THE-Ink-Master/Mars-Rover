@@ -13,7 +13,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: run PlatformIO Dependabot
+      - name: run PlatformIO Dependabot (mega)
         uses: peterus/platformio_dependabot@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          project_path: 'arduino-mega-code/'
+      - name: run PlatformIO Dependabot (esp)
+        uses: peterus/platformio_dependabot@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          project_path: 'esp32-code/'
