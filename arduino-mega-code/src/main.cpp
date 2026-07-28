@@ -18,7 +18,7 @@
  * Channel 6 which is 7 on the controller = Arm left/right          Dial (Left)
  * Channel 7 which is 8 on the controller = Arm Forward/Backward    Dial (Right)
  * Channel 8 which is 9 on the controller = Arm Up/Down             3 stage switch (Mid Right)
- * Channel 9 which is 10 on the controller = Not used               2 stage switch (Right)      Usage idea: alarm/music so people know to get out of the rovers way
+ * Channel 9 which is 10 on the controller = UV Light toggle        2 stage switch (Right)
  */
 
 #include <Arduino.h>
