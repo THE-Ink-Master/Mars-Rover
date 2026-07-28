@@ -5,14 +5,18 @@ import os
 import pygame
 import atexit
 
+# clear the terminal
 os.system('cls' if os.name == 'nt' else 'clear')
 
+# start pygame audio player
 pygame.mixer.init()
 pygame.init()
 
 # disable serial if you don't have the mega connected
+# start up serial
 serial1 = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, timeout=1)
 
+# give python3-serial time to connect
 time.sleep(2)
 
 def exit():
@@ -27,6 +31,9 @@ def play():
     else:
         pygame.mixer.music.load("./music/Moon Lord.mp3")
         pygame.mixer.music.play(0)
+
+def stop():
+    pygame.mixer.music.stop(0)
 
 def say(text):
     engine = pyttsx3.init()
@@ -50,8 +57,10 @@ def read_serial():
             buffer_string = lines[-1]
 
     
-        if last_received == "Play Music"():
+        if last_received == "ch9On"():
             play()
+        elif last_received == "ch9Off"():
+            stop()
 
 def println(printIn):
     toPrint = f"{printIn}\n"
@@ -65,10 +74,11 @@ try:
     while True:
         read_serial()
         print("playing")
+        time.sleep(0.1)
 
 except KeyboardInterrupt:
     print("Closing, please wait")
 
 finally:
     serial1.close()
-    print("E")
+    print("closed")
