@@ -2,28 +2,30 @@
  *    Mars Rover - Arduino Code
  *    by Dejan, www.HowToMechatronics.com
  *    modified by Jack to add arm/claw support
- * 
- *   Libraries:
+ *
+ *   Libraries (included):
  *   ServoEasing: https://github.com/ArminJo/ServoEasing
  *   IBusBM: https://github.com/bmellink/IBusBM
  *   AccelStepper:http://www.airspayce.com/mikem/arduino/AccelStepper/index.html
- * Channel 0 which is 1 on the controller = Camera rotate
- * Channel 1 which is 2 on the controller = Camera tilt
- * Channel 2 which is 3 on the controller = Steering
- * channel 3 which is 4 on the controller = Speed
- * Channel 4 which is 5 on the controller = Direction
- * Channel 5 which is 6 on the controller = Claw actuate
- * Channel 6 which is 7 on the controller = Arm left/right
- * Channel 7 which is 8 on the controller = Arm Forward/Backward
- * Channel 8 which is 9 on the controller = Arm Up/Down            3 stage switch
- * Channel 9 which is 10 on the controller = Not used               Usage idea: Sirens so people know to get out of the rovers way
+ *
+ *
+ * Channel 0 which is 1 on the controller = Camera rotate           Right Stick (left/Right)
+ * Channel 1 which is 2 on the controller = Camera tilt             Right Stick (Up/Down)
+ * Channel 2 which is 3 on the controller = Steering                Left Stick (left/Right)
+ * channel 3 which is 4 on the controller = Speed                   Left Stick (Up/Down)
+ * Channel 4 which is 5 on the controller = Direction               2 stage switch (Left)
+ * Channel 5 which is 6 on the controller = Claw actuate            2 stage switch (Mid Left)
+ * Channel 6 which is 7 on the controller = Arm left/right          Dial (Left)
+ * Channel 7 which is 8 on the controller = Arm Forward/Backward    Dial (Right)
+ * Channel 8 which is 9 on the controller = Arm Up/Down             3 stage switch (Mid Right)
+ * Channel 9 which is 10 on the controller = UV Light toggle        2 stage switch (Right)
  */
 
 #include <Arduino.h>
 #include <AccelStepper.h>
 #include <ServoEasing.hpp>
 #include <IBusBM.h>
-// #include <LiquidCrystal_I2C.h> //if we want to add a Liquid Crystal I2C display to the rover
+// #include <LiquidCrystal_I2C.h> //if we want to add a Liquid Crystal I2C display to the rover for stats
 #include <Servo.h>
 
 #define motorW1_IN1 6
@@ -51,19 +53,20 @@ ServoEasing servoArmMidHeight;
 ServoEasing servoArmClawHeight;
 ServoEasing servoArmClaw;
 
-AccelStepper camPanStepper(1, 46, 45);  //(Type:driver, STEP, DIR) - Stepper1
+AccelStepper camPanStepper(1, 46, 45); //(Type:driver, STEP, DIR) - Stepper1
 
 IBusBM IBus;
 IBusBM IBusSensor;
 
-int angle = 0;   // servo position in degrees
+int angle = 0; // servo position in degrees
 int ch0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8, ch9;
 int servo1Angle = 90;
 int servo3Angle = 90;
 int servo4Angle = 90;
 int servo6Angle = 90;
-int s = 0; // rover speed
-int r = 0; // turning radius
+int sbd = 0; // speed before distance
+int s = 0;   // rover speed
+int r = 0;   // turning radius
 int m1, m2, m3, m4, m5, m6;
 int camTilt = 90;
 int camPan = 0;
@@ -74,26 +77,30 @@ float thetaInnerFront, thetaInnerBack, thetaOuterFront, thetaOuterBack = 0;
 float armForwardBackward = 0;
 float armUpDown = 0;
 
+int distance = 100; // distance from wall in cm
+float dist = 0.55;  // speed multiplier based on distance
+
 int servoArmSideAngle = 90;
 int servoArmBaseAngle = 90;
 int servoArmMidAngle = 90;
 int servoArmClawAngle = 90;
 int servoClawAngle = 90;
 
-
 float d1 = 271; // distance in mm
 float d2 = 278;
 float d3 = 301;
 float d4 = 304;
 
-
-void calculateMotorsSpeed() {
+void calculateMotorsSpeed()
+{
   // if no steering, all wheels speed is the same - straight move
-  if (ch3 > 1485 && ch3 < 1515) {
+  if (ch3 > 1485 && ch3 < 1515)
+  {
     speed1 = speed2 = speed3 = s;
   }
   // when steering, wheels speed depend on the turning radius value
-  else {
+  else
+  {
     // Outer wheels, furthest wheels from turning point, have max speed
     // Due to the rover geometry, all three outer wheels should rotate almost with the same speed. They differe only 1% so we asume they are the same.
     speed1 = s;
@@ -109,50 +116,83 @@ void calculateMotorsSpeed() {
   speed3PWM = map(round(speed3), 0, 100, 0, 255);
 }
 
-void calculateServoAngle() {
+void calculateServoAngle()
+{
   // Calculate the angle for each servo for the input turning radius "r"
   thetaInnerFront = round((atan((d3 / (r + d1)))) * 180 / PI);
   thetaInnerBack = round((atan((d2 / (r + d1)))) * 180 / PI);
   thetaOuterFront = round((atan((d3 / (r - d1)))) * 180 / PI);
   thetaOuterBack = round((atan((d2 / (r - d1)))) * 180 / PI);
-
 }
 
-void arm() {
-  //code for the arm/claw extension goes here
+void arm()
+{
+  // Code for the arm/claw extension goes here
+  // Set to correct values here
   servoArmBaseAngle = map(ch6, 1000, 2000, 0, 180);
   armForwardBackward = map(ch7, 1000, 2000, 0, 180);
 
-  if(ch5 > 1500) {
+  // Set to corect angles and values
+  if (ch5 > 1500)
+  {
     servoClawAngle = 0;
-  } else if(ch5 < 1500) {
+  }
+  else if (ch5 < 1500)
+  {
     servoClawAngle = 180;
   }
 
-  if(ch8 > 1600) {
-    armUpDown = 180;
-  } else if(ch8 < 1400) {
-    armUpDown = 0;
-  } else if(ch8 == 1500) {
-    armUpDown = 90;
+  // Set to correct values
+  armUpDown = map(ch8, 0, 2000, 0, 180);
+
+  // Send
+  if (ch9 < 1500)
+  {
+    Serial.println("Reverse");
   }
-  
-  servoArmBaseSide.startEaseTo(servoArmBaseAngle);
+  else if (ch9 > 1500)
+  {
+    Serial.println("Forward");
+  }
+
+  // debug
+  Serial.print("Base side Angle: ");
+  Serial.println(servoArmSideAngle);
+  Serial.print("Base Height Angle: ");
+  Serial.println(servoArmBaseAngle);
+  Serial.print("Mid Arm Angle: ");
+  Serial.println(servoArmMidAngle);
+  Serial.print("Claw Arm Angle: ");
+  Serial.println(servoArmClawAngle);
+  Serial.print("Claw angle: ");
+  Serial.println(servoClawAngle);
+
+  // setting servo angles
+  servoArmBaseSide.startEaseTo(servoArmSideAngle);
   servoArmBaseHeight.startEaseTo(servoArmBaseAngle);
   servoArmMidHeight.startEaseTo(servoArmMidAngle);
   servoArmClawHeight.startEaseTo(servoArmClawAngle);
   servoArmClaw.startEaseTo(servoClawAngle);
 }
 
-void serialSend() {
-  if (Serial3.available() > 0) {
-    int copy = Serial3.read();
-    Serial.println("ESP-DATA:");
-    Serial.println(copy);
+void serialSend()
+{
+  //if we connect the ESP32's serial to the mega's serial 3 then we can relay the information to the mega's serial0 (USB serial/serial0).
+  if (Serial3.available() > 0)
+  {
+    char copy = (char)Serial3.read();
+    Serial.print("ESP-");
+    Serial.print(copy);
   }
 }
 
-void setup() {
+void distanceCalc()
+{
+  distance = 100; //set distance (cm!!!)
+}
+
+void setup()
+{
   /*
      Use this if you need to change the frequency of the PWM signals
     TCCR4B = TCCR4B & B11111000 | B00000101;     // D6,D7,D8 PWM frequency of 30.64 Hz
@@ -161,13 +201,12 @@ void setup() {
     TCCR5B = TCCR5B & B11111000 | B00000101; // D4, D13 PWM frequency of 30.64 Hz
     TCCR3B = TCCR3B & B11111000 | B00000101;    // D2, D3, D5 PWM frequency of 30.64 Hz
   */
-  
-  
-  //We can connect the pi to the mega through usb and make them communicate over serial( USB)
+
+  // We can connect the pi to the mega through usb and make them communicate over serial (USB)
   Serial.begin(115200);
-  //And TX3 and RX3 can be connected to the ESP32 to make all devices send their data to the pi (or mega) 
+  // And TX3 and RX3 can be connected to the ESP32 to make all devices send their data to the pi (or mega)
   Serial3.begin(115200);
-  IBus.begin(Serial1, IBUSBM_NOTIMER); // Servo iBUS
+  IBus.begin(Serial1, IBUSBM_NOTIMER);       // Servo iBUS
   IBusSensor.begin(Serial2, IBUSBM_NOTIMER); // Sensor iBUS
 
   IBusSensor.addSensor(IBUSS_INTV); // add voltage sensor
@@ -177,7 +216,7 @@ void setup() {
   servoW4.attach(24);
   servoW6.attach(25);
   servoCamTilt.attach(26);
-  
+
   servoArmBaseSide.attach(27);
   servoArmBaseHeight.attach(28);
   servoArmMidHeight.attach(29);
@@ -214,7 +253,7 @@ void setup() {
 
   // DC Motors
   // Motor Wheel 1 - Left Front
-  digitalWrite(motorW1_IN1, LOW);   // PWM value
+  digitalWrite(motorW1_IN1, LOW); // PWM value
   digitalWrite(motorW1_IN2, LOW); // Forward
   // Motor Wheel 2 - Left Middle
   digitalWrite(motorW2_IN1, LOW);
@@ -234,7 +273,8 @@ void setup() {
   digitalWrite(motorW6_IN2, LOW);
 }
 
-void loop() {
+void loop()
+{
   // Reading the data comming from the RC Transmitter
   IBus.loop();
   ch0 = IBus.readChannel(0);
@@ -250,71 +290,104 @@ void loop() {
 
   // Convertign the incoming data
   // Steering right
-  if (ch3 > 1515) {
+  if (ch3 > 1515)
+  {
     r = map(ch3, 1515, 2000, 1400, 600); // turning radius from 1400mm to 600mm
-    //Serial.print("steer right value on channel 3 = ");
-   // Serial.println(ch3);
+    // Serial.print("steer right value on channel 3 = ");
+    // Serial.println(ch3);
   }
   // Steering left
-  else if (ch3 < 1485) {
+  else if (ch3 < 1485)
+  {
     r = map(ch3, 1485, 1000, 1400, 600); // turning radius from 600mm to 1400mm
-   // Serial.print("steer left value on channel 03= ");
-    //Serial.println(ch3);
+                                         // Serial.print("steer left value on channel 03= ");
+    // Serial.println(ch3);
   }
   // Rover speed in % from 0 to 100
-  s = map(ch2, 1000, 2000, 0, 100); // rover speed from 0% to 100%
+  sbd = map(ch2, 1000, 2000, 0, 100); // rover speed from 0% to 100%
+
+  // Decrease speed when less then 50cm from wall and stop when 10cm from wall (forward)
+  if (ch4 > 1500)
+  {
+    if (distance < 50 || distance > 10)
+    {
+      dist = map(distance, 20, 50, 0, 1);
+      s = sbd * dist;
+    }
+    else if (distance < 10)
+    {
+      s = 0;
+    }
+    else
+    {
+      s = sbd;
+    }
+  }
+  else if (ch4 < 1500)
+  {
+    // Set speed (backwards (reverse))
+    s = sbd;
+  }
 
   // Camera head steering
-  if (ch1 < 1485 ) {
-    if (camTilt >= 35) {
+  if (ch1 < 1485)
+  {
+    if (camTilt >= 35)
+    {
       camTilt--;
       delay(20);
     }
   }
-  if (ch1 > 1515 ) {
-    if (camTilt <= 165) {
+  if (ch1 > 1515)
+  {
+    if (camTilt <= 165)
+    {
       camTilt++;
       delay(20);
     }
   }
   servoCamTilt.startEaseTo(camTilt); // Camera tilt
 
-  if (ch0 >= 1000 && ch0 < 1485) {
+  if (ch0 >= 1000 && ch0 < 1485)
+  {
     camPan = map(ch0, 1000, 1485, 400, 0);
   }
-  else if (ch0 > 1515 && ch0 <= 2000) {
+  else if (ch0 > 1515 && ch0 <= 2000)
+  {
     camPan = map(ch0, 1515, 2000, 0, -400);
   }
-  else {
+  else
+  {
     camPan = 0;
   }
-  camPanStepper.setSpeed(camPan);    // Camera pan
+  camPanStepper.setSpeed(camPan); // Camera pan
   camPanStepper.run();
-
 
   calculateMotorsSpeed();
   calculateServoAngle();
 
   // Steer right
-  if (ch3 > 1515) {
+  if (ch3 > 1515)
+  {
     // Servo motors
     // Outer wheels
     servoW1.startEaseTo(97 + thetaInnerFront); // front wheel steer right
-    servoW3.startEaseTo(97 - thetaInnerBack); // back wheel steer left for overall steering to the right of the rover
+    servoW3.startEaseTo(97 - thetaInnerBack);  // back wheel steer left for overall steering to the right of the rover
     // Inner wheels
     servoW4.startEaseTo(94 + thetaOuterFront);
     servoW6.startEaseTo(96 - thetaOuterBack);
 
     // DC Motors
-    if (ch4 > 1500) { // Move forward
+    if (ch4 > 1500)
+    { // Move forward
       // Motor Wheel 1 - Left Front
-      analogWrite(motorW1_IN1, speed1PWM);   // Outer wheels running at speed1 - max speed
+      analogWrite(motorW1_IN1, speed1PWM); // Outer wheels running at speed1 - max speed
       digitalWrite(motorW1_IN2, LOW);
       // Motor Wheel 2 - Left Middle
       analogWrite(motorW2_IN1, speed1PWM);
       digitalWrite(motorW2_IN2, LOW);
       // Motor Wheel 3 - Left Back
-      analogWrite(motorW3_IN1, speed1PWM); 
+      analogWrite(motorW3_IN1, speed1PWM);
       digitalWrite(motorW3_IN2, LOW);
       // right side motors move in opposite direction
       // Motor Wheel 4 - Right Front
@@ -327,17 +400,18 @@ void loop() {
       digitalWrite(motorW6_IN1, LOW);
       analogWrite(motorW6_IN2, speed2PWM); // Inner back wheel running at speed2 - lower speed
     }
-    else if (ch4 < 1500) {
+    else if (ch4 < 1500)
+    {
       // Motor Wheel 1 - Left Front
-      digitalWrite(motorW1_IN1, LOW);   // Outer wheels running at speed1 - max speed
+      digitalWrite(motorW1_IN1, LOW); // Outer wheels running at speed1 - max speed
       analogWrite(motorW1_IN2, speed1PWM);
       // Motor Wheel 2 - Left Middle
       digitalWrite(motorW2_IN1, LOW);
       analogWrite(motorW2_IN2, speed1PWM);
       // Motor Wheel 3 - Left Back
       digitalWrite(motorW3_IN1, LOW);
-      analogWrite(motorW3_IN2, speed1PWM);   
-           // right side motors move in opposite direction
+      analogWrite(motorW3_IN2, speed1PWM);
+      // right side motors move in opposite direction
       // Motor Wheel 4 - Right Front
       analogWrite(motorW4_IN1, speed2PWM);
       digitalWrite(motorW4_IN2, LOW); // Inner front wheel running at speed2 - lower speed
@@ -351,7 +425,8 @@ void loop() {
   }
 
   // Steer left
-  else if (ch3 < 1485) {
+  else if (ch3 < 1485)
+  {
     // Servo motors
     servoW1.startEaseTo(97 - thetaOuterFront);
     servoW3.startEaseTo(97 + thetaOuterBack);
@@ -359,10 +434,11 @@ void loop() {
     servoW6.startEaseTo(96 + thetaInnerBack);
 
     // DC Motors
-    if (ch4 > 1500) { // Move forward
+    if (ch4 > 1500)
+    { // Move forward
       // Motor Wheel 1 - Left Front
-      analogWrite(motorW1_IN1, speed2PWM);   // PWM value
-      digitalWrite(motorW1_IN2, LOW); // Forward
+      analogWrite(motorW1_IN1, speed2PWM); // PWM value
+      digitalWrite(motorW1_IN2, LOW);      // Forward
       // Motor Wheel 2 - Left Middle
       analogWrite(motorW2_IN1, speed3PWM);
       digitalWrite(motorW2_IN2, LOW);
@@ -380,9 +456,10 @@ void loop() {
       digitalWrite(motorW6_IN1, LOW);
       analogWrite(motorW6_IN2, speed1PWM);
     }
-    else if (ch4 < 1500) { // Move backward
+    else if (ch4 < 1500)
+    { // Move backward
       // Motor Wheel 1 - Left Front
-      digitalWrite(motorW1_IN1, LOW);   // PWM value
+      digitalWrite(motorW1_IN1, LOW);      // PWM value
       analogWrite(motorW1_IN2, speed2PWM); // Forward
       // Motor Wheel 2 - Left Middle
       digitalWrite(motorW2_IN1, LOW);
@@ -404,17 +481,19 @@ void loop() {
   }
 
   // Move straight
-  else {
+  else
+  {
     servoW1.startEaseTo(97);
     servoW3.startEaseTo(97);
     servoW4.startEaseTo(94);
     servoW6.startEaseTo(96);
 
     // DC Motors
-    if (ch4 > 1500) {
+    if (ch4 > 1500)
+    {
       // Motor Wheel 1 - Left Front
-      analogWrite(motorW1_IN1, speed1PWM);  // all wheels move at the same speed
-      digitalWrite(motorW1_IN2, LOW); // Forward
+      analogWrite(motorW1_IN1, speed1PWM); // all wheels move at the same speed
+      digitalWrite(motorW1_IN2, LOW);      // Forward
       // Motor Wheel 2 - Left Middle
       analogWrite(motorW2_IN1, speed1PWM);
       digitalWrite(motorW2_IN2, LOW);
@@ -423,18 +502,19 @@ void loop() {
       digitalWrite(motorW3_IN2, LOW);
       // right side motors move in opposite direction
       // Motor Wheel 4 - Right Front
-       digitalWrite(motorW4_IN1, LOW);
-       analogWrite(motorW4_IN2, speed1PWM);
-           // Motor Wheel 5 - Right Middle
+      digitalWrite(motorW4_IN1, LOW);
+      analogWrite(motorW4_IN2, speed1PWM);
+      // Motor Wheel 5 - Right Middle
       digitalWrite(motorW5_IN1, LOW);
-       analogWrite(motorW5_IN2, speed1PWM);
-                 // Motor Wheel 6 - Right Back
+      analogWrite(motorW5_IN2, speed1PWM);
+      // Motor Wheel 6 - Right Back
       digitalWrite(motorW6_IN1, LOW);
       analogWrite(motorW6_IN2, speed1PWM);
-          }
-    else if (ch4 < 1500) {
+    }
+    else if (ch4 < 1500)
+    {
       // Motor Wheel 1 - Left Front
-      digitalWrite(motorW1_IN1, LOW);  // all wheels move at the same speed
+      digitalWrite(motorW1_IN1, LOW);      // all wheels move at the same speed
       analogWrite(motorW1_IN2, speed1PWM); // Forward
       // Motor Wheel 2 - Left Middle
       digitalWrite(motorW2_IN1, LOW);
@@ -446,15 +526,14 @@ void loop() {
       // Motor Wheel 4 - Right Front
       analogWrite(motorW4_IN1, speed1PWM);
       digitalWrite(motorW4_IN2, LOW);
-                  // Motor Wheel 5 - Right Middle
-       analogWrite(motorW5_IN1, speed1PWM);
-       digitalWrite(motorW5_IN2, LOW);
-           // Motor Wheel 6 - Right Back
-            analogWrite(motorW6_IN1, speed1PWM);
-            digitalWrite(motorW6_IN2, LOW);
+      // Motor Wheel 5 - Right Middle
+      analogWrite(motorW5_IN1, speed1PWM);
+      digitalWrite(motorW5_IN2, LOW);
+      // Motor Wheel 6 - Right Back
+      analogWrite(motorW6_IN1, speed1PWM);
+      digitalWrite(motorW6_IN2, LOW);
     }
   }
-
 
   Serial.println("Channel 5: ");
   Serial.println(ch5);
