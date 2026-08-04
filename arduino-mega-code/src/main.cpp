@@ -14,11 +14,11 @@
  * Channel 2 which is 3 on the controller = Steering                Left Stick (left/Right)
  * channel 3 which is 4 on the controller = Speed                   Left Stick (Up/Down)
  * Channel 4 which is 5 on the controller = Direction               2 stage switch (Left)
- * Channel 5 which is 6 on the controller = Claw actuate            2 stage switch (Mid Left)
- * Channel 6 which is 7 on the controller = Arm left/right          Dial (Left)
- * Channel 7 which is 8 on the controller = Arm Forward/Backward    Dial (Right)
- * Channel 8 which is 9 on the controller = Arm Up/Down             3 stage switch (Mid Right)
- * Channel 9 which is 10 on the controller = UV Light toggle        2 stage switch (Right)
+ * Channel 5 which is 6 on the controller = Claw actuate            2 stage switch (Mid Left)    1000 up, 2000 down
+ * Channel 6 which is 7 on the controller = Arm left/right          Dial (Left)                  1000 - 2000 range
+ * Channel 7 which is 8 on the controller = Arm Forward/Backward    Dial (Right)                 1000 - 2000 range
+ * Channel 8 which is 9 on the controller = Unused                  3 stage switch (Mid Right)   1000 up, 1500 mid, 2000 down
+ * Channel 9 which is 10 on the controller = UV Light toggle        2 stage switch (Right)       1000 up, 2000 down
  */
 
 #include <Arduino.h>
@@ -75,7 +75,6 @@ float speed1PWM, speed2PWM, speed3PWM = 0;
 float thetaInnerFront, thetaInnerBack, thetaOuterFront, thetaOuterBack = 0;
 
 float armForwardBackward = 0;
-float armUpDown = 0;
 
 int distance = 100; // distance from wall in cm
 float dist = 0.55;  // speed multiplier based on distance
@@ -91,6 +90,16 @@ float d2 = 278;
 float d3 = 301;
 float d4 = 304;
 
+int maxDist = 50;
+int minDist = 10;
+
+// Map code that can map to float
+float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
+{
+ return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+// Calculates the speed needed for each dc motor 
 void calculateMotorsSpeed()
 {
   // if no steering, all wheels speed is the same - straight move
@@ -116,6 +125,7 @@ void calculateMotorsSpeed()
   speed3PWM = map(round(speed3), 0, 100, 0, 255);
 }
 
+// Calculates the angle needed for the rotation of the rover
 void calculateServoAngle()
 {
   // Calculate the angle for each servo for the input turning radius "r"
@@ -125,6 +135,7 @@ void calculateServoAngle()
   thetaOuterBack = round((atan((d2 / (r - d1)))) * 180 / PI);
 }
 
+// Code for the arm/claw
 void arm()
 {
   // Code for the arm/claw extension goes here
@@ -141,9 +152,6 @@ void arm()
   {
     servoClawAngle = 180;
   }
-
-  // Set to correct values
-  armUpDown = map(ch8, 0, 2000, 0, 180);
 
   // Send
   if (ch9 < 1500)
@@ -175,9 +183,10 @@ void arm()
   servoArmClaw.startEaseTo(servoClawAngle);
 }
 
+// Echo Serial3 to Serial
 void serialSend()
 {
-  //if we connect the ESP32's serial to the mega's serial 3 then we can relay the information to the mega's serial0 (USB serial/serial0).
+  // If we connect the ESP32's serial to the mega's serial 3 then we can relay the information to the mega's serial0 (USB serial/serial0).
   if (Serial3.available() > 0)
   {
     char copy = (char)Serial3.read();
@@ -186,9 +195,10 @@ void serialSend()
   }
 }
 
+// Code that is used to calculate the distance from the ultrasonic sensor
 void distanceCalc()
 {
-  distance = 100; //set distance (cm!!!)
+  distance = 100; // set distance (cm!!!)
 }
 
 void setup()
@@ -309,12 +319,13 @@ void loop()
   // Decrease speed when less then 50cm from wall and stop when 10cm from wall (forward)
   if (ch4 > 1500)
   {
-    if (distance < 50 || distance > 10)
+    if (distance < maxDist || distance > minDist)
     {
-      dist = map(distance, 20, 50, 0, 1);
+      dist = mapfloat(distance, minDist, maxDist, 0.00, 1.00);
+      dist = map(distance, minDist, maxDist, 0.00, 1.00);
       s = sbd * dist;
     }
-    else if (distance < 10)
+    else if (distance < minDist)
     {
       s = 0;
     }
@@ -325,7 +336,7 @@ void loop()
   }
   else if (ch4 < 1500)
   {
-    // Set speed (backwards (reverse))
+    // Set speed (reverse)
     s = sbd;
   }
 

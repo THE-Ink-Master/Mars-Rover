@@ -4,6 +4,16 @@ import pyttsx3
 import os
 import pygame
 import atexit
+import logging
+
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(filename='log.log', encoding='utf-8', level=logging.DEBUG)
+
+# logger.debug('')
+# logger.info('')
+# logger.warning('')
+# logger.error('')
 
 # Clear the terminal
 os.system('cls' if os.name == 'nt' else 'clear')
@@ -61,6 +71,7 @@ def read_serial():
             #like so: if lines[-2]: last_received = lines[-2]
             buffer_string = lines[-1]
 
+            logger.debug(last_received)
     
         if last_received == "Reverse":
             play()

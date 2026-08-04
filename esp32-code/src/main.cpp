@@ -8,21 +8,17 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
-
-#define SRAM_CS     32
-#define EPD_CS      15
-#define EPD_DC      33
-#define EPD_RESET   -1
-#define EPD_BUSY    -1
-
+#define SRAM_CS 32
+#define EPD_CS 15
+#define EPD_DC 33
+#define EPD_RESET -1
+#define EPD_BUSY -1
 
 ThinkInk_213_Mono_B72 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
 Adafruit_ADT7410 tempsensor = Adafruit_ADT7410();
 
-
-const char* ssid = "MarsRoverBluey";
-const char* password = "";
-
+const char *ssid = "MarsRoverBluey";
+const char *password = "";
 
 // Static IP + DNS for Google streaming
 IPAddress local_IP(192, 168, 1, 7);
@@ -31,13 +27,10 @@ IPAddress subnet(255, 255, 255, 0);
 IPAddress primaryDNS(8, 8, 8, 8);
 IPAddress secondaryDNS(192, 168, 1, 8);
 
-
 // Google Apps Script DoPost URL
-const char* GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOuwPfS-okXHiHduOyuGty6SnhYR84COfCVHdJ85V4groIByQt_ksPWJNX5kymd9tb/exec";
-
+const char *GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOuwPfS-okXHiHduOyuGty6SnhYR84COfCVHdJ85V4groIByQt_ksPWJNX5kymd9tb/exec";
 
 WebServer server(80);
-
 
 // Mission / charting / streaming variables
 bool isRecording = false;
@@ -54,14 +47,14 @@ float currentTempC = 0.0;
 float latestTemperature = 0.0;
 unsigned long lastGoogleUpdate = 0;
 
-
 // Sampling interval (ms)
 unsigned long samplingInterval = 5000;
 
-
 // ===== Mission / MySQL functions =====
-void sendTemperatureToServer(float temperature) {
-  if (WiFi.status() == WL_CONNECTED && isRecording) {
+void sendTemperatureToServer(float temperature)
+{
+  if (WiFi.status() == WL_CONNECTED && isRecording)
+  {
     HTTPClient http;
     http.begin("http://192.168.1.8/insert_temp.php");
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -71,17 +64,18 @@ void sendTemperatureToServer(float temperature) {
   }
 }
 
-
-void exportDataToCSV() {
-  if (currentFilename == "") return;
+void exportDataToCSV()
+{
+  if (currentFilename == "")
+    return;
   HTTPClient http;
   http.begin("http://192.168.1.8/export_data.php?filename=" + currentFilename);
   http.GET();
   http.end();
 }
 
-
-void clearDatabase() {
+void clearDatabase()
+{
   HTTPClient http;
   http.begin("http://192.168.1.8/clear_data.php");
   http.GET();
@@ -91,43 +85,39 @@ void clearDatabase() {
   currentFilename = "";
 }
 
-
 // ===== Google streaming =====
-void sendTempToGoogleSheets(float temperature) {
-  if (WiFi.status() == WL_CONNECTED) {
+void sendTempToGoogleSheets(float temperature)
+{
+  if (WiFi.status() == WL_CONNECTED)
+  {
     WiFiClientSecure client;
     client.setInsecure();
     HTTPClient http;
     String postData = "temperature=" + String(temperature, 2);
 
-
     Serial.println("Posting to Google Sheets: " + String(GOOGLE_SCRIPT_URL));
     Serial.println("Post data: " + postData);
-
 
     http.begin(client, GOOGLE_SCRIPT_URL);
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
     http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
 
-
     int httpResponseCode = http.POST(postData);
-
 
     Serial.print("HTTP Response code: ");
     Serial.println(httpResponseCode);
-
 
     String response = http.getString();
     Serial.println("Full response from server:");
     Serial.println(response);
 
-
     http.end();
-  } else {
+  }
+  else
+  {
     Serial.println("WiFi not connected");
   }
 }
-
 
 // ===== Web server handlers =====
 void handleRoot();
@@ -143,36 +133,37 @@ void handleStopStream();
 void handleStartGoogle();
 void handleStopGoogle();
 
-
-void setup() {
+void setup()
+{
   Serial.begin(115200);
   Wire.begin();
-
 
   display.begin();
   display.setTextSize(1);
   display.setTextColor(EPD_BLACK);
 
-
-  if (!tempsensor.begin()) {
+  if (!tempsensor.begin())
+  {
     Serial.println("ADT7410 not found!");
-    while (1);
+    while (1)
+      ;
   }
   tempsensor.setResolution(ADT7410_16BIT);
 
-
   configTime(0, 0, "pool.ntp.org");
 
-
-  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
+  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS))
+  {
     Serial.println("Failed to configure static IP with DNS");
   }
 
-
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
   Serial.println("\nWiFi Connected");
-
 
   server.on("/", handleRoot);
   server.on("/temp", handleTemp);
@@ -187,18 +178,17 @@ void setup() {
   server.on("/start_google", handleStartGoogle);
   server.on("/stop_google", handleStopGoogle);
 
-
   server.begin();
 }
 
-
 // ===== Loop =====
-void loop() {
+void loop()
+{
   server.handleClient();
 
-
   static unsigned long lastEInkUpdate = 0;
-  if (millis() - lastEInkUpdate > 60000) {
+  if (millis() - lastEInkUpdate > 60000)
+  {
     float tempC = tempsensor.readTempC();
     display.clearBuffer();
     display.setCursor(0, 10);
@@ -218,33 +208,35 @@ void loop() {
   }
 }
 
-
 // ===== Web / Temp / Chart handlers =====
-void handleRoot() { currentTempC = tempsensor.readTempC(); server.send(200, "text/html", getWebPage(currentTempC)); }
-
-
-void handleTemp() {
+void handleRoot()
+{
   currentTempC = tempsensor.readTempC();
+  server.send(200, "text/html", getWebPage(currentTempC));
+}
 
+void handleTemp()
+{
+  currentTempC = tempsensor.readTempC();
 
   // Charting uses this endpoint only
   server.send(200, "text/plain", isCharting ? String(currentTempC, 2) : "null");
 
-
   // MySQL logging
-  if (isRecording) sendTemperatureToServer(currentTempC);
-
+  if (isRecording)
+    sendTemperatureToServer(currentTempC);
 
   // Update Google streaming independently
   latestTemperature = currentTempC;
-  if (streamToGoogle && millis() - lastGoogleUpdate >= 5000) {
+  if (streamToGoogle && millis() - lastGoogleUpdate >= 5000)
+  {
     sendTempToGoogleSheets(latestTemperature);
     lastGoogleUpdate = millis();
   }
 
-
   // Update e-ink message
-  if (millis() - lastMessageUpdate > 60000) {
+  if (millis() - lastMessageUpdate > 60000)
+  {
     if (currentTempC < lowThreshold)
       currentMessage = "STOP! You might have found ice = water on Mars";
     else if (currentTempC > highThreshold)
@@ -255,11 +247,12 @@ void handleTemp() {
   }
 }
 
-
-void handleStart() {
-  if (!isRecording) {
+void handleStart()
+{
+  if (!isRecording)
+  {
     time_t now = time(nullptr);
-    struct tm* timeinfo = localtime(&now);
+    struct tm *timeinfo = localtime(&now);
     char buffer[32];
     strftime(buffer, sizeof(buffer), "mission_%Y%m%d_%H%M%S", timeinfo);
     currentFilename = String(buffer);
@@ -268,26 +261,64 @@ void handleStart() {
   server.send(200, "text/plain", "Started");
 }
 
-
-void handleStop() { isRecording = false; exportDataToCSV(); server.send(200, "text/plain", "Stopped"); }
-void handleClear() { clearDatabase(); server.send(200, "text/plain", "Cleared"); }
-void handleChartStart() { isCharting = true; server.send(200, "text/plain", "Charting Started"); }
-void handleChartStop() { isCharting = false; server.send(200, "text/plain", "Charting Stopped"); }
-void handleChartClear() { isCharting = false; server.send(200, "text/plain", "Chart Cleared"); }
-
+void handleStop()
+{
+  isRecording = false;
+  exportDataToCSV();
+  server.send(200, "text/plain", "Stopped");
+}
+void handleClear()
+{
+  clearDatabase();
+  server.send(200, "text/plain", "Cleared");
+}
+void handleChartStart()
+{
+  isCharting = true;
+  server.send(200, "text/plain", "Charting Started");
+}
+void handleChartStop()
+{
+  isCharting = false;
+  server.send(200, "text/plain", "Charting Stopped");
+}
+void handleChartClear()
+{
+  isCharting = false;
+  server.send(200, "text/plain", "Chart Cleared");
+}
 
 // ===== Web streaming / Google handlers =====
-void handleStartStream() { streamToWeb = true; server.send(200, "text/plain", "Streaming to web enabled"); }
-void handleStopStream()  { streamToWeb = false; streamToGoogle = false; server.send(200, "text/plain", "Streaming to web stopped"); }
-void handleStartGoogle() { 
-  if (streamToWeb) { streamToGoogle = true; server.send(200, "text/plain", "Google upload started"); } 
-  else server.send(200, "text/plain", "Streaming must be ON before uploading to Google"); 
+void handleStartStream()
+{
+  streamToWeb = true;
+  server.send(200, "text/plain", "Streaming to web enabled");
 }
-void handleStopGoogle() { streamToGoogle = false; server.send(200, "text/plain", "Google upload stopped"); }
-
+void handleStopStream()
+{
+  streamToWeb = false;
+  streamToGoogle = false;
+  server.send(200, "text/plain", "Streaming to web stopped");
+}
+void handleStartGoogle()
+{
+  if (streamToWeb)
+  {
+    streamToGoogle = true;
+    server.send(200, "text/plain", "Google upload started");
+  }
+  else
+    server.send(200, "text/plain", "Streaming must be ON before uploading to Google");
+}
+void handleStopGoogle()
+{
+  streamToGoogle = false;
+  server.send(200, "text/plain", "Google upload stopped");
+}
 
 // ===== Webpage generator =====
-String getWebPage(float currentTemp) {
+String getWebPage(float currentTemp)
+{
   // Return original dashboard HTML including Sample Rate, Chart, Mission Controls
   // Add streaming buttons after sample rate
   String html = R"rawliteral(
@@ -301,8 +332,10 @@ String getWebPage(float currentTemp) {
   #tempDash { font-weight: bold; margin-left: 10px; }
   </style></head><body>
   <h1>Mars Rover Bluey Mission Control</h1>
-  <p>WiFi Signal: RSSI )rawliteral" + String(WiFi.RSSI()) + R"rawliteral( dBm</p>
-  <p>Sensor IP: )rawliteral" + WiFi.localIP().toString() + R"rawliteral(</p>
+  <p>WiFi Signal: RSSI )rawliteral" +
+                String(WiFi.RSSI()) + R"rawliteral( dBm</p>
+  <p>Sensor IP: )rawliteral" +
+                WiFi.localIP().toString() + R"rawliteral(</p>
 
 
   <h2>Set Thresholds</h2>
