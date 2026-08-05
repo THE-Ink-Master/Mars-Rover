@@ -12,7 +12,9 @@ if [ -f "requirements.txt" ]; then
     pip install -r requirements.txt
 else
     echo "requirements.txt not found!"
+    echo "Please make sure you are in the /pi-code folder"
 fi
 
-# Run this command manually replacing username with your user!
-# sudo usermod -a -G dialout username
+sudo usermod -a -G dialout $USER
+clear
+echo "Completed, please restart your machine."
