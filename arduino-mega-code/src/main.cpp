@@ -1,6 +1,6 @@
 /*
  *    Mars Rover - Arduino Code
- *    by Dejan, www.HowToMechatronics.com
+ *    original by Dejan, www.HowToMechatronics.com
  *    modified by Jack to add arm/claw support
  *
  *   Libraries (included):
@@ -96,10 +96,10 @@ int minDist = 10;
 // Map code that can map to float
 float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
 {
- return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-// Calculates the speed needed for each dc motor 
+// Calculates the speed needed for each dc motor
 void calculateMotorsSpeed()
 {
   // if no steering, all wheels speed is the same - straight move
@@ -298,7 +298,7 @@ void loop()
   ch8 = IBus.readChannel(8);
   ch9 = IBus.readChannel(9);
 
-  // Convertign the incoming data
+  // Converting the incoming data
   // Steering right
   if (ch3 > 1515)
   {
@@ -310,11 +310,14 @@ void loop()
   else if (ch3 < 1485)
   {
     r = map(ch3, 1485, 1000, 1400, 600); // turning radius from 600mm to 1400mm
-                                         // Serial.print("steer left value on channel 03= ");
+    // Serial.print("steer left value on channel 03= ");
     // Serial.println(ch3);
   }
   // Rover speed in % from 0 to 100
   sbd = map(ch2, 1000, 2000, 0, 100); // rover speed from 0% to 100%
+
+  // Calculate distance
+  distanceCalc();
 
   // Decrease speed when less then 50cm from wall and stop when 10cm from wall (forward)
   if (ch4 > 1500)
@@ -322,7 +325,6 @@ void loop()
     if (distance < maxDist || distance > minDist)
     {
       dist = mapfloat(distance, minDist, maxDist, 0.00, 1.00);
-      dist = map(distance, minDist, maxDist, 0.00, 1.00);
       s = sbd * dist;
     }
     else if (distance < minDist)
@@ -546,17 +548,7 @@ void loop()
     }
   }
 
-  Serial.println("Channel 5: ");
-  Serial.println(ch5);
-  Serial.println("Channel 6: ");
-  Serial.println(ch6);
-  Serial.println("Channel 7: ");
-  Serial.println(ch7);
-  Serial.println("Channel 8: ");
-  Serial.println(ch8);
-  Serial.println("Channel 9: ");
-  Serial.println(ch9);
-  // arm();
+  arm();
 
   serialSend();
 
