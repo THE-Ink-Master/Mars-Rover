@@ -328,7 +328,6 @@ void loop()
     if (frontDistance < maxDist && frontDistance > minDist)
     {
       frontDist = mapfloat(frontDistance, minDist, maxDist, 0.00, 1.00);
-      // frontDist = map(frontDistance, minDist, maxDist, 0.00, 1.00);
       s = sbd * frontDist;
     }
     else if (frontDistance <= minDist)
@@ -346,7 +345,6 @@ void loop()
     if (backDistance < maxDist && backDistance > minDist)
     {
       backDist = mapfloat(backDistance, minDist, maxDist, 0.00, 1.00);
-      backDist = map(backDistance, minDist, maxDist, 0.00, 1.00);
       s = sbd * backDist;
     }
     else if (backDistance <= minDist)
