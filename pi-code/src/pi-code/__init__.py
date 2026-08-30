@@ -5,10 +5,31 @@ import os
 import pygame
 import atexit
 import logging
+import selenium
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 
+# Logger init
 logger = logging.getLogger(__name__)
-
 logging.basicConfig(filename='log.log', encoding='utf-8', level=logging.DEBUG)
+
+# Web init
+
+chromeOptions = Options()
+# Set version to the latest chrome for testing version to allow extension loading
+chromeOptions.browser_version = "152"
+# userDataDir = r"C:\Users\jackk\AppData\Local\Google\Chrome\User Data"
+# chromeOptions.add_argument(f"--user-data-dir={userDataDir}")
+# chromeOptions.add_argument("--profile-directory=Profile 7")
+chromeOptions.add_argument("--disable-blink-features=AutomationControlled")
+chromeOptions.add_argument("--disable-features=DisableLoadExtensionCommandLineSwitch")
+chromeOptions.add_argument("--no-default-browser-check")
+chromeOptions.add_argument("--no-first-run")
+chromeOptions.add_argument("--disable-component-update")
+chromeOptions.add_extension('./chrome/extensions/uBlock_Lite.crx')
+
+driver = webdriver.Chrome(options=chromeOptions)
 
 # logger.debug('')
 # logger.info('')
@@ -22,9 +43,11 @@ os.system('cls' if os.name == 'nt' else 'clear')
 pygame.mixer.init()
 pygame.init()
 
+driver.get("https://www.youtube.com/watch?v=Cv1AXnX8DjU")
+
 # Disable serial if you don't have the mega connected
 # Start up serial
-serial1 = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, timeout=1)
+# serial1 = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, timeout=1)
 
 # Give python3-serial time to connect
 time.sleep(2)
@@ -32,7 +55,7 @@ time.sleep(2)
 # Close the serial port on exit
 def exit():
     print("Closing...")
-    serial1.close()
+    # serial1.close()
 atexit.register(exit)
 
 # Play reversing sound when going back
@@ -57,41 +80,43 @@ def say(text):
     engine.runAndWait()
 
 # Read serial (untested)
-def read_serial():
-    if serial1.in_waiting > 0:
-        global last_received
+# def read_serial():
+#     if serial1.in_waiting > 0:
+#         global last_received
 
-        buffer_string = ''
-        buffer_string = buffer_string + serial1.read(serial1.inWaiting())
-        if '\n' in buffer_string:
-            lines = buffer_string.split('\n') # Guaranteed to have at least 2 entries
-            last_received = lines[-2]
+#         buffer_string = ''
+#         buffer_string = buffer_string + serial1.read(serial1.inWaiting())
+#         if '\n' in buffer_string:
+#             lines = buffer_string.split('\n') # Guaranteed to have at least 2 entries
+#             last_received = lines[-2]
             #If the Arduino sends lots of empty lines, you'll lose the
             #last filled line, so you could make the above statement conditional
             #like so: if lines[-2]: last_received = lines[-2]
-            buffer_string = lines[-1]
+            # buffer_string = lines[-1]
 
-            logger.debug(last_received)
+            # logger.debug(last_received)
     
-        if last_received == "Reverse":
-            play()
-        elif last_received == "Forward":
-            stop()
+        # if last_received == "Reverse":
+        #     play()
+        # elif last_received == "Forward":
+        #     stop()
+        # elif last_received == "Web":
+            # webbrowser.open("https://www.youtube.com/watch?v=F2PJbTuZlTU&list=RDftOve7asyF0&index=3")
 
-# Print with new line
-def println(printIn):
-    toPrint = f"{printIn}\n"
-    serial1.write(toPrint.encode("utf-8"))
+# # Print with new line
+# def println(printIn):
+#     toPrint = f"{printIn}\n"
+#     serial1.write(toPrint.encode("utf-8"))
 
-# Print without new line
-def print(print):
-    serial1.write(print.encode("utf-8"))
+# # Print without new line
+# def print(print):
+#     serial1.write(print.encode("utf-8"))
 
 try:
     # Main loop
     while True:
-        read_serial()
-        print("playing")
+        # read_serial()
+        # print("playing")
         time.sleep(0.1)
 
 except KeyboardInterrupt:
@@ -99,5 +124,6 @@ except KeyboardInterrupt:
 
 finally:
     # On close:
-    serial1.close()
+    # serial1.close()
+    driver.quit
     print("closed")

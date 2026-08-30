@@ -76,8 +76,10 @@ float thetaInnerFront, thetaInnerBack, thetaOuterFront, thetaOuterBack = 0;
 
 float armForwardBackward = 0;
 
-int distance = 100; // distance from wall in cm
-float dist = 0.55;  // speed multiplier based on distance
+int frontDistance = 100; // distance from wall in cm
+int backDistance = 100;
+float frontDist = 0.55; // speed multiplier based on distance
+float backDist = 0.55;
 
 int servoArmSideAngle = 90;
 int servoArmBaseAngle = 90;
@@ -96,10 +98,10 @@ int minDist = 10;
 // Map code that can map to float
 float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
 {
- return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-// Calculates the speed needed for each dc motor 
+// Calculates the speed needed for each dc motor
 void calculateMotorsSpeed()
 {
   // if no steering, all wheels speed is the same - straight move
@@ -183,7 +185,7 @@ void arm()
   servoArmClaw.startEaseTo(servoClawAngle);
 }
 
-// Echo Serial3 to Serial
+// Echo Serial3 to Serial (if we cennect the ESP32 serial to the mega)
 void serialSend()
 {
   // If we connect the ESP32's serial to the mega's serial 3 then we can relay the information to the mega's serial0 (USB serial/serial0).
@@ -198,7 +200,8 @@ void serialSend()
 // Code that is used to calculate the distance from the ultrasonic sensor
 void distanceCalc()
 {
-  distance = 100; // set distance (cm!!!)
+  frontDistance = 100; // set distance (cm!!!)
+  backDistance = 100;
 }
 
 void setup()
@@ -310,7 +313,7 @@ void loop()
   else if (ch3 < 1485)
   {
     r = map(ch3, 1485, 1000, 1400, 600); // turning radius from 600mm to 1400mm
-                                         // Serial.print("steer left value on channel 03= ");
+    // Serial.print("steer left value on channel 03= ");
     // Serial.println(ch3);
   }
   // Rover speed in % from 0 to 100
@@ -319,13 +322,13 @@ void loop()
   // Decrease speed when less then 50cm from wall and stop when 10cm from wall (forward)
   if (ch4 > 1500)
   {
-    if (distance < maxDist || distance > minDist)
+    if (frontDistance < maxDist && frontDistance > minDist)
     {
-      dist = mapfloat(distance, minDist, maxDist, 0.00, 1.00);
-      dist = map(distance, minDist, maxDist, 0.00, 1.00);
-      s = sbd * dist;
+      frontDist = mapfloat(frontDistance, minDist, maxDist, 0.00, 1.00);
+      frontDist = map(frontDistance, minDist, maxDist, 0.00, 1.00);
+      s = sbd * frontDist;
     }
-    else if (distance < minDist)
+    else if (frontDistance <= minDist)
     {
       s = 0;
     }
@@ -337,7 +340,20 @@ void loop()
   else if (ch4 < 1500)
   {
     // Set speed (reverse)
-    s = sbd;
+    if (backDistance < maxDist && backDistance > minDist)
+    {
+      backDist = mapfloat(backDistance, minDist, maxDist, 0.00, 1.00);
+      backDist = map(backDistance, minDist, maxDist, 0.00, 1.00);
+      s = sbd * backDist;
+    }
+    else if (backDistance <= minDist)
+    {
+      s = 0;
+    }
+    else
+    {
+      s = sbd;
+    }
   }
 
   // Camera head steering
