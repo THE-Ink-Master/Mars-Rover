@@ -41,6 +41,11 @@
 #define motorW6_IN1 11
 #define motorW6_IN2 12
 
+#define echoFront 49
+#define trigFront 50
+#define echoBack 51
+#define trigBack 52
+
 ServoEasing servoW1;
 ServoEasing servoW3;
 ServoEasing servoW4;
@@ -65,7 +70,7 @@ int servo3Angle = 90;
 int servo4Angle = 90;
 int servo6Angle = 90;
 int sbd = 0; // speed before distance
-int s = 0;   // rover speed
+float s = 0;   // rover speed
 int r = 0;   // turning radius
 int m1, m2, m3, m4, m5, m6;
 int camTilt = 90;
@@ -75,6 +80,8 @@ float speed1PWM, speed2PWM, speed3PWM = 0;
 float thetaInnerFront, thetaInnerBack, thetaOuterFront, thetaOuterBack = 0;
 
 float armForwardBackward = 0;
+
+float duration;
 
 int frontDistance = 100; // distance from wall in cm
 int backDistance = 100;
@@ -92,8 +99,8 @@ float d2 = 278;
 float d3 = 301;
 float d4 = 304;
 
-int maxDist = 50;
-int minDist = 10;
+int maxDist = 150;
+int minDist = 60;
 
 // Map code that can map to float
 float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
@@ -200,8 +207,17 @@ void serialSend()
 // Code that is used to calculate the distance from the ultrasonic sensor
 void distanceCalc()
 {
-  frontDistance = 100; // set distance (cm!!!)
-  backDistance = 100;
+  digitalWrite(trigFront, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigFront, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigFront, LOW);
+
+  duration = pulseIn(echoFront, HIGH);
+  frontDistance = (duration * 0.0343) / 2;
+  Serial.println(frontDistance);
+  // frontDistance = 100; // set distance (cm!!!)
+  // backDistance = 100;
 }
 
 void setup()
@@ -234,7 +250,7 @@ void setup()
   servoArmBaseHeight.attach(28);
   servoArmMidHeight.attach(29);
   servoArmClawHeight.attach(30);
-  servoArmClaw.attach(30);
+  servoArmClaw.attach(31);
 
   servoW1.write(90);
   servoW3.write(90);
@@ -284,6 +300,11 @@ void setup()
   // Motor Wheel 6 - Right Back
   digitalWrite(motorW6_IN1, LOW);
   digitalWrite(motorW6_IN2, LOW);
+
+  pinMode(trigFront, OUTPUT);
+  pinMode(trigBack, OUTPUT);
+  pinMode(echoFront, INPUT);
+  pinMode(echoBack, INPUT);
 }
 
 void loop()
@@ -323,11 +344,16 @@ void loop()
   distanceCalc();
 
   // Decrease speed when less then 50cm from wall and stop when 10cm from wall (forward)
-  if (ch4 > 1500)
+  if (ch4 <= 1500)
   {
+    // Serial.println("chanel 4 forward");
     if (frontDistance < maxDist && frontDistance > minDist)
     {
+      Serial.println("distance");
+      Serial.println(frontDistance);
       frontDist = mapfloat(frontDistance, minDist, maxDist, 0.00, 1.00);
+      Serial.println("frontDist");
+      Serial.println(frontDist);
       s = sbd * frontDist;
     }
     else if (frontDistance <= minDist)
@@ -339,13 +365,17 @@ void loop()
       s = sbd;
     }
   }
-  else if (ch4 < 1500)
+  else if (ch4 >= 1500)
   {
     // Set speed (reverse)
     if (backDistance < maxDist && backDistance > minDist)
     {
       backDist = mapfloat(backDistance, minDist, maxDist, 0.00, 1.00);
+      Serial.println("backDist");
+      Serial.println(backDist);
       s = sbd * backDist;
+      Serial.println("speed");
+      Serial.println(s);
     }
     else if (backDistance <= minDist)
     {
@@ -356,6 +386,8 @@ void loop()
       s = sbd;
     }
   }
+  Serial.println("speed");
+  Serial.println(s);
 
   // Camera head steering
   if (ch1 < 1485)
@@ -563,9 +595,9 @@ void loop()
     }
   }
 
-  arm();
+  // arm();
 
-  serialSend();
+  // serialSend();
 
   // Monitor the battery voltage
   int sensorValue = analogRead(A0);
